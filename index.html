@@ -42,10 +42,11 @@
 </head>
 <body>
   <!-- Popup d'enregistrement (doit être le premier élément) -->
-<div id="register-popup" class="register-popup-overlay" style="display: flex;">
+<!-- Popup d'enregistrement (caché au départ) -->
+<div id="register-popup" class="register-popup-overlay" style="display: none;">
   <div class="register-popup-content">
     <h2>📋 Enregistrement</h2>
-    <p>Veuillez vous enregistrer pour accéder à l'application</p>
+    <p>Veuillez vous enregistrer pour continuer</p>
     
     <form id="register-form">
       <div class="form-group">
@@ -63,16 +64,12 @@
         <input type="email" id="email" name="email">
       </div>
       
-
-      
-      <button type="submit" class="register-btn">Accéder à l'application</button>
+      <button type="submit" class="register-btn">Continuer</button>
     </form>
     
     <div id="register-message" style="display: none; margin-top: 10px; padding: 10px; border-radius: 5px;"></div>
   </div>
 </div>
-  <!-- Loader -->
-  <div id="page-loader"><div class="spinner"></div></div>
 
   <!-- Tout le contenu de la page est dans #app -->
   <div id="app">
@@ -220,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
   </script>
 </body>
 </html>
+
 
 
 
