@@ -371,9 +371,10 @@ ${(() => {
   `;
 })()}
 <br>
-            <button class="open-button" onclick="handleSoliciteClick('${escapeHtml(produit.code)}')">
+           <button class="open-button" onclick="handleSoliciteClick('${escapeHtml(produit.code)}')">
     Solicite/Realise
 </button>
+
 
           
 
