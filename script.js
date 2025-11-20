@@ -10,29 +10,7 @@
     let currentImageIndex = 0;
     let imageUrls = [];
     
-    document.addEventListener("DOMContentLoaded", () => {
-  // Initialiser le système d'enregistrement
-  initRegistration();
-        const socialLinks = document.querySelector('.social-links');
-    const pedDePage = document.getElementById('ped de page');
- if (socialLinks) socialLinks.remove();
-    if (pedDePage) pedDePage.remove();
-      // Chargement des données
-     fetch("https://script.google.com/macros/s/AKfycbx0Kxwp5Do05aCkOtFNQM2x1Gh72AyzI8qcENzMityDr8bErm9Cp6nI6Yk6J0psoebj/exec?page=api")
-  .then(response => response.json())
-  .then(data => {
-    displayProduits(data);
-  })
-  .catch(error => {
-    document.getElementById("produits").innerHTML =
-      "<div class='alert alert-danger'>Erreur de chargement des données</div>";
-    console.error(error);
-  });
-
-      
-      // Initialiser le défilement horizontal
-      setupHorizontalDragScroll();
-    });
+  
 
     function triggerScrollPulse() {
     const el = document.querySelector('.old-price');
@@ -499,6 +477,7 @@ ${(() => {
     
     /* Fonctions pour la galerie d'images */
   function showPopup(imageUrl, nom, description, prix, tailles, code, section, hideWhatsappButton = false) {
+   initRegistration();
   // Supprimer la première image de la galerie
   imageUrls = imageUrl.split(',').map(url => url.trim()).slice(1); // 👈 ici
   
