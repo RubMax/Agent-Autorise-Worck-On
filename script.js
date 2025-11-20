@@ -12,7 +12,7 @@
     
     document.addEventListener("DOMContentLoaded", () => {
   // Initialiser le système d'enregistrement
-  initRegistration();
+  //initRegistration();
         const socialLinks = document.querySelector('.social-links');
     const pedDePage = document.getElementById('ped de page');
  if (socialLinks) socialLinks.remove();
@@ -307,14 +307,16 @@ div.className = "article produit-ligne" + (hasImage ? "" : " no-image");
   <div class="article-image">
     <img src="${escapeHtml(produit.image)}" 
          alt="${escapeHtml(produit.nom)}" 
-         onclick="showPopup('${escapeHtml(produit.image)}', '${escapeHtml(produit.nom)}', '${descriptionParam}', '${escapeHtml(produit.prix)}', '${escapeHtml(produit.tailles)}', '${escapeHtml(produit.code)}', '${escapeHtml(produit.section)}')">
+         onclick="openSolicite('${escapeHtml(produit.image)}', '${escapeHtml(produit.nom)}', '${descriptionParam}', '${escapeHtml(produit.prix)}', '${escapeHtml(produit.tailles)}', '${escapeHtml(produit.code)}', '${escapeHtml(produit.section)}')"
+
   </div>
 ` : ''}
 
 
           <div class="article-details">
             <h3 style="text-transform: uppercase"
-    onclick="showPopup('${escapeHtml(produit.image)}', '${escapeHtml(produit.nom)}', '${descriptionParam}', '${escapeHtml(produit.prix)}', '${escapeHtml(produit.tailles)}', '${escapeHtml(produit.code)}', '${escapeHtml(produit.section)}')">
+    onclick="openSolicite('${escapeHtml(produit.image)}', '${escapeHtml(produit.nom)}', '${descriptionParam}', '${escapeHtml(produit.prix)}', '${escapeHtml(produit.tailles)}', '${escapeHtml(produit.code)}', '${escapeHtml(produit.section)}')"
+
   ${escapeHtml(produit.nom)}
 </h3>
 
@@ -394,7 +396,23 @@ ${(() => {
 }
 
 
-    
+    function openSolicite(image, nom, description, prix, tailles, code, section) {
+    // On garde les infos du produit
+    currentProduct = { image, nom, description, prix, tailles, code, section };
+
+    // Vérifier si l'utilisateur est déjà enregistré
+    let userRegistered = localStorage.getItem("userRegistered");
+
+    if (!userRegistered) {
+        // Ouvrir le popup d’enregistrement AVANT
+        document.getElementById("registration-popup").style.display = "flex";
+        return;
+    }
+
+    // Si déjà enregistré → ouvrir directement le popup du produit
+    showPopup(image, nom, description, prix, tailles, code, section);
+}
+
     
      function startPubCarousel() {
       if (pubItems.length === 0) return;
@@ -906,6 +924,19 @@ function registerClient(clientData) {
       console.error('Erreur de requête:', error);
       return { success: false, message: error.message };
     });
+ localStorage.setItem("userRegistered", "yes");
+
+// Après enregistrement → ouvrir le popup produit
+showPopup(
+  currentProduct.image,
+  currentProduct.nom,
+  currentProduct.description,
+  currentProduct.prix,
+  currentProduct.tailles,
+  currentProduct.code,
+  currentProduct.section
+);
+
 }
 
 
