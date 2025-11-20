@@ -408,7 +408,69 @@ function handleSoliciteClick(codeProduit) {
     // Ouvre le popup d'enregistrement
     openRegistrationPopup();
 }
- 
+
+
+
+
+// Stocke le code du produit cliqué (global)
+let pendingProductCode = null;
+
+// Fonction appelée depuis le bouton "Solicite/Realise"
+function handleSoliciteClick(codeProduit) {
+  // Sauvegarde pour après enregistrement
+  pendingProductCode = codeProduit;
+
+  // Si l'utilisateur est déjà enregistré → ouvrir produit directement
+  if (checkRegistration()) {
+    // openProductPopup utilise window.allProduits (voir plus bas)
+    openProductPopup(pendingProductCode);
+    pendingProductCode = null;
+    return;
+  }
+
+  // Sinon on ouvre le popup d'enregistrement
+  openRegistrationPopup();
+}
+function openRegistrationPopup() {
+  const popup = document.getElementById("register-popup") || document.getElementById("registration-popup");
+  if (!popup) {
+    console.warn("register-popup introuvable");
+    return;
+  }
+  popup.style.display = "flex";
+  document.body.classList.add("registration-pending");
+}
+
+function closeRegistrationPopup() {
+  const popup = document.getElementById("register-popup") || document.getElementById("registration-popup");
+  if (popup) {
+    popup.style.display = "none";
+    document.body.classList.remove("registration-pending");
+  }
+}
+
+function openProductPopup(codeProduit) {
+  if (!window.allProduits || !Array.isArray(window.allProduits)) {
+    console.error("allProduits non défini");
+    return;
+  }
+  const produit = window.allProduits.find(p => String(p.code) === String(codeProduit));
+  if (!produit) {
+    console.warn("Produit non trouvé pour code :", codeProduit);
+    return;
+  }
+  // Appelle ta fonction existante (showPopup) avec les bons arguments
+  showPopup(
+    produit.image || "",
+    produit.nom || "",
+    encodeURIComponent(produit.description || ""),
+    produit.prix || "",
+    produit.tailles || "",
+    produit.code || "",
+    produit.section || ""
+  );
+}
+
     
      function startPubCarousel() {
       if (pubItems.length === 0) return;
@@ -972,29 +1034,75 @@ function showRegisterMessage(message, isError = false) {
 
 // ✅ Initialisation de l’enregistrement
 function initRegistration() {
+  const popup = document.getElementById('register-popup') || document.getElementById('registration-popup');
+  const form = document.getElementById('registration-form') || document.getElementById('register-form');
+  const messageEl = document.getElementById('register-message');
 
-    const form = document.getElementById("registration-form");
-    const popup = document.getElementById("registration-popup");
+  if (!popup || !form) {
+    console.error("❌ initRegistration : éléments manquants (popup ou form).");
+    return;
+  }
 
-    // Empêcher ouverture auto
-    popup.style.display = "none";
+  // S'assurer que le popup est fermé au départ
+  popup.style.display = 'none';
+  messageEl && (messageEl.style.display = 'none');
 
-    form.addEventListener("submit", (e) => {
-        e.preventDefault();
+  // Éviter les doubles handlers
+  form.removeEventListener && form.removeEventListener('submit', submitRegistrationHandler);
 
-        // Ici : enregistre l'utilisateur
-        saveUserRegistration();
+  // Handler séparé pour pouvoir le remove si besoin
+  function submitRegistrationHandler(e) {
+    e.preventDefault();
+    if (messageEl) messageEl.style.display = 'none';
 
-        // Fermer le popup d’enregistrement
-        popup.style.display = "none";
+    const formData = {
+      nom: document.getElementById('nom')?.value?.trim() || '',
+      tel: document.getElementById('tel')?.value?.trim() || '',
+      email: document.getElementById('email')?.value?.trim() || '',
+      whatsappAgent: window.WHATSAPP_NUMBER || ""
+    };
 
-        // Si un produit était cliqué → afficher son popup
+    // Validation visuelle (tu as déjà validateFormInputs)
+    if (typeof validateFormInputs === 'function' && !validateFormInputs(formData)) {
+      showRegisterMessage('⚠️ Veuillez corriger les champs en rouge avant de continuer.', true);
+      return;
+    }
+
+    const submitBtn = form.querySelector('.register-btn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Vérification...'; }
+
+    // registerClient renvoie une promesse
+    registerClient(formData).then(result => {
+      if (result && result.success) {
+        // Le registerClient existant positionne localStorage.setItem('clientRegistered','true')
+        showRegisterMessage('✅ Enregistrement réussi !', false);
+        closeRegistrationPopup();
+
+        // Assurer la cohérence : s'assurer que 'clientRegistered' est défini
+        localStorage.setItem('clientRegistered', 'true');
+
+        // Si un produit était en attente → l'ouvrir après un court délai
         if (pendingProductCode) {
-            openProductPopup(pendingProductCode);
-            pendingProductCode = null;
+          const code = pendingProductCode;
+          pendingProductCode = null;
+          setTimeout(() => openProductPopup(code), 300);
         }
+      } else {
+        showRegisterMessage('❌ Erreur : ' + (result.message || 'Veuillez réessayer.'), true);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Accéder à l\'application'; }
+      }
+    }).catch(err => {
+      showRegisterMessage('🚫 Erreur : ' + (err?.message || err), true);
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Accéder à l\'application'; }
     });
+  }
+
+  // Attache le handler proprement
+  form.addEventListener('submit', submitRegistrationHandler);
 }
+
+
+
 function openRegistrationPopup() {
     document.getElementById("registration-popup").style.display = "flex";
 }
@@ -1056,3 +1164,20 @@ function loadMainApp() {
       app.classList.add("app-ready");
     });
 }
+
+
+
+
+window.addEventListener('error', e => {
+  console.error("Global error:", e.message, e.filename, e.lineno);
+});
+
+setTimeout(() => {
+  if (!window.handleSoliciteClick) {
+    console.warn("handleSoliciteClick manquant → on crée une version fallback.");
+    window.handleSoliciteClick = function(code) {
+      pendingProductCode = code;
+      openRegistrationPopup();
+    };
+  }
+}, 2000);
