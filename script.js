@@ -12,7 +12,7 @@
     
     document.addEventListener("DOMContentLoaded", () => {
   // Initialiser le système d'enregistrement
- // initRegistration();
+  initRegistration();
         const socialLinks = document.querySelector('.social-links');
     const pedDePage = document.getElementById('ped de page');
  if (socialLinks) socialLinks.remove();
@@ -274,7 +274,6 @@ function handleScroll() {
 function displayProduits(data) {
   const container = document.getElementById('produits');
   container.innerHTML = "";
- window.allProduits = data;
   const sections = [...new Set(data.map(item => item.section))];
 
   // Filtrer les pubs valides
@@ -371,11 +370,8 @@ ${(() => {
   `;
 })()}
 <br>
-           <button class="open-button" onclick="handleSoliciteClick('${escapeHtml(produit.code)}')">
-    Solicite/Realise
-</button>
-
-
+            <button class="open-button" onclick="showPopup('${escapeHtml(produit.image)}', '${escapeHtml(produit.nom)}', '${descriptionParam}', '${escapeHtml(produit.prix)}', '${escapeHtml(produit.tailles)}', '${escapeHtml(produit.code)}', '${escapeHtml(produit.section)}')">Solicite/Realise</button>
+            
           
 
           </div>
@@ -398,79 +394,7 @@ ${(() => {
 }
 
 
-   // Variable temporaire pour stocker le produit cliqué
-let pendingProductCode = null;
-
-// Exécuté quand l’utilisateur clique sur "Solicite/Realise"
-function handleSoliciteClick(codeProduit) {
-    pendingProductCode = codeProduit;
-
-    // Ouvre le popup d'enregistrement
-    openRegistrationPopup();
-}
-
-
-
-
-// Stocke le code du produit cliqué (global)
-let pendingProductCode = null;
-
-// Fonction appelée depuis le bouton "Solicite/Realise"
-function handleSoliciteClick(codeProduit) {
-  // Sauvegarde pour après enregistrement
-  pendingProductCode = codeProduit;
-
-  // Si l'utilisateur est déjà enregistré → ouvrir produit directement
-  if (checkRegistration()) {
-    // openProductPopup utilise window.allProduits (voir plus bas)
-    openProductPopup(pendingProductCode);
-    pendingProductCode = null;
-    return;
-  }
-
-  // Sinon on ouvre le popup d'enregistrement
-  openRegistrationPopup();
-}
-function openRegistrationPopup() {
-  const popup = document.getElementById("register-popup") || document.getElementById("registration-popup");
-  if (!popup) {
-    console.warn("register-popup introuvable");
-    return;
-  }
-  popup.style.display = "flex";
-  document.body.classList.add("registration-pending");
-}
-
-function closeRegistrationPopup() {
-  const popup = document.getElementById("register-popup") || document.getElementById("registration-popup");
-  if (popup) {
-    popup.style.display = "none";
-    document.body.classList.remove("registration-pending");
-  }
-}
-
-function openProductPopup(codeProduit) {
-  if (!window.allProduits || !Array.isArray(window.allProduits)) {
-    console.error("allProduits non défini");
-    return;
-  }
-  const produit = window.allProduits.find(p => String(p.code) === String(codeProduit));
-  if (!produit) {
-    console.warn("Produit non trouvé pour code :", codeProduit);
-    return;
-  }
-  // Appelle ta fonction existante (showPopup) avec les bons arguments
-  showPopup(
-    produit.image || "",
-    produit.nom || "",
-    encodeURIComponent(produit.description || ""),
-    produit.prix || "",
-    produit.tailles || "",
-    produit.code || "",
-    produit.section || ""
-  );
-}
-
+    
     
      function startPubCarousel() {
       if (pubItems.length === 0) return;
@@ -1034,94 +958,74 @@ function showRegisterMessage(message, isError = false) {
 
 // ✅ Initialisation de l’enregistrement
 function initRegistration() {
-  const popup = document.getElementById('register-popup') || document.getElementById('registration-popup');
-  const form = document.getElementById('registration-form') || document.getElementById('register-form');
+  const popup = document.getElementById('register-popup');
+  const form = document.getElementById('register-form');
   const messageEl = document.getElementById('register-message');
 
   if (!popup || !form) {
-    console.error("❌ initRegistration : éléments manquants (popup ou form).");
+    console.error("❌ Erreur : le popup d'enregistrement est introuvable.");
     return;
   }
 
-  // S'assurer que le popup est fermé au départ
-  popup.style.display = 'none';
-  messageEl && (messageEl.style.display = 'none');
+  if (checkRegistration()) {
+    popup.style.display = 'none';
+    document.body.classList.remove('registration-pending');
+    return;
+  }
 
-  // Éviter les doubles handlers
-  form.removeEventListener && form.removeEventListener('submit', submitRegistrationHandler);
+  popup.style.display = 'flex';
+  document.body.classList.add('registration-pending');
+  loadAgents();
 
-  // Handler séparé pour pouvoir le remove si besoin
-  function submitRegistrationHandler(e) {
+  form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (messageEl) messageEl.style.display = 'none';
+    messageEl.style.display = 'none';
 
     const formData = {
-      nom: document.getElementById('nom')?.value?.trim() || '',
-      tel: document.getElementById('tel')?.value?.trim() || '',
-      email: document.getElementById('email')?.value?.trim() || '',
-      whatsappAgent: window.WHATSAPP_NUMBER || ""
+      nom: document.getElementById('nom').value.trim(),
+      tel: document.getElementById('tel').value.trim(),
+      email: document.getElementById('email').value,
+      whatsappAgent: WHATSAPP_NUMBER
     };
 
-    // Validation visuelle (tu as déjà validateFormInputs)
-    if (typeof validateFormInputs === 'function' && !validateFormInputs(formData)) {
+    // Validation visuelle
+    if (!validateFormInputs(formData)) {
       showRegisterMessage('⚠️ Veuillez corriger les champs en rouge avant de continuer.', true);
       return;
     }
 
-    const submitBtn = form.querySelector('.register-btn');
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Vérification...'; }
+    const submitBtn = document.querySelector('.register-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Vérification...';
 
-    // registerClient renvoie une promesse
-    registerClient(formData).then(result => {
-      if (result && result.success) {
-        // Le registerClient existant positionne localStorage.setItem('clientRegistered','true')
-        showRegisterMessage('✅ Enregistrement réussi !', false);
-        closeRegistrationPopup();
-
-        // Assurer la cohérence : s'assurer que 'clientRegistered' est défini
-        localStorage.setItem('clientRegistered', 'true');
-
-        // Si un produit était en attente → l'ouvrir après un court délai
-        if (pendingProductCode) {
-          const code = pendingProductCode;
-          pendingProductCode = null;
-          setTimeout(() => openProductPopup(code), 300);
+    // Envoi vers le serveur
+    registerClient(formData)
+      .then(result => {
+        if (result.success) {
+          // ✅ Succès - que ce soit un nouveau client ou un client existant
+          const message = result.dejaEnregistre 
+            ? '✅ Bienvenue de retour ! Accès à l\'application...'
+            : '✅ Enregistrement réussi ! Accès à l\'application...';
+          
+          showRegisterMessage(message, false);
+          
+          setTimeout(() => {
+            popup.style.display = 'none';
+            document.body.classList.remove('registration-pending');
+            loadMainApp();
+          }, 1500);
+        } else {
+          showRegisterMessage('❌ Erreur : ' + (result.message || 'Veuillez réessayer.'), true);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Accéder à l\'application';
         }
-      } else {
-        showRegisterMessage('❌ Erreur : ' + (result.message || 'Veuillez réessayer.'), true);
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Accéder à l\'application'; }
-      }
-    }).catch(err => {
-      showRegisterMessage('🚫 Erreur : ' + (err?.message || err), true);
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Accéder à l\'application'; }
-    });
-  }
-
-  // Attache le handler proprement
-  form.addEventListener('submit', submitRegistrationHandler);
-}
-
-
-
-function openRegistrationPopup() {
-    document.getElementById("registration-popup").style.display = "flex";
-}
-
-function openProductPopup(codeProduit) {
-    // Chercher le produit dans tes données
-    const produit = window.allProduits.find(p => p.code === codeProduit);
-
-    if (produit) {
-        showPopup(
-            produit.image,
-            produit.nom,
-            encodeURIComponent(produit.description),
-            produit.prix,
-            produit.tailles,
-            produit.code,
-            produit.section
-        );
-    }
+      })
+      .catch(error => {
+        showRegisterMessage('🚫 Erreur : ' + error.message, true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Accéder à l\'application';
+      });
+  });
 }
 
 // ✅ Chargement principal de l’app (inchangé)
@@ -1164,20 +1068,3 @@ function loadMainApp() {
       app.classList.add("app-ready");
     });
 }
-
-
-
-
-window.addEventListener('error', e => {
-  console.error("Global error:", e.message, e.filename, e.lineno);
-});
-
-setTimeout(() => {
-  if (!window.handleSoliciteClick) {
-    console.warn("handleSoliciteClick manquant → on crée une version fallback.");
-    window.handleSoliciteClick = function(code) {
-      pendingProductCode = code;
-      openRegistrationPopup();
-    };
-  }
-}, 2000);
